@@ -40,12 +40,15 @@ labels = target[yeast_train[["labelIndices"]]]
 
 feats = setdiff(target, labels)
 new_data.train = data.train[feats]
+new_data.test = data.test[feats]
 logic_data <- lapply(data.train[labels], as.logical)
+logic_data.test <- lapply(data.test[labels], as.logical)
 
 data_with_logic = cbind(new_data.train, logic_data)
+data_with_logic.test = cbind(new_data.test, logic_data.test)
 
 # stworzenie zadania
-#yeast.task = makeMultilabelTask(id = "multi", data = data_with_logic, target = labels)
+yeast.task = makeMultilabelTask(id = "multi", data = data_with_logic.test, target = labels)
 
 # podzial danych na testowe i trenujace
 # n = getTaskSize(yeast.task)
@@ -71,28 +74,23 @@ multilabelChain <- function(learner, data, binary.label.data, labels) {
   
   for (i in 1 : nr_labels)
   {
-    chain.data = cbind(data, binary.label.data[i])
-    binarytask = makeClassifTask(id = "BinaryClassification", data = chain.data, target = labels[i])
+    chain = cbind(data, binary.label.data[i])
+    binarytask = makeClassifTask(id = "BinaryClassification", data = chain, target = labels[i])
     mod = train(learner, binarytask)
-    
-    task.pred = predict(mod, task = bh.task, subset = test.set)
-    
-    data <- cbind(data, t(r))
+    task.pred = predict(mod, task = binarytask)
+    response = getPredictionResponse(task.pred)
+    col_name <- sprintf("Class%d", i)
+    new_data = cbind(data, lapply(response, as.logical))
+    colnames(new_data)[dim(new_data)[2]] <- col_name
+    data <- new_data
   }
   
-
-  return(weightMatrix)
+  return(mod)
 }
 
 
-
-
-
-
-
-
-
-
+model = multilabelChain(binary.tree, new_data.train, logic_data, labels)
+task.pred = predict(model, task = yeast.task)
 
 perceptron <- function(x, y, eta, niter) {
   
