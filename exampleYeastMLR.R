@@ -90,14 +90,14 @@ performance(predict.cc.svm, measures = measuresList)
 performance(predict.ns.svm, measures = measuresList)
 
 # resampling
-rdesc = makeResampleDesc("CV", iters = 10, split = 2/3)
+rdesc = makeResampleDesc("CV", iters = 10)
 resampleRansdomForestSRC = resample(lrn.rfsrc, yeast.task, rdesc, measures = measuresList)
 resample.cc.tree = resample(lrn.cc.tree, yeast.task, rdesc, measures = measuresList)
 resample.ns.tree = resample(lrn.ns.tree, yeast.task, rdesc, measures = measuresList)
 resample.cc.naiveBayes = resample(lrn.cc.naiveBayes, yeast.task, rdesc, measures = measuresList)
 resample.ns.naiveBayes = resample(lrn.ns.naiveBayes, yeast.task, rdesc, measures = measuresList)
 resample.cc.svm = resample(lrn.cc.svm, yeast.task, rdesc, measures = measuresList)
-resample.ns.svm = resample(lrn.ns.svm, scene.task, rdesc, measures = measuresList)
+resample.ns.svm = resample(lrn.ns.svm, yeast.task, rdesc, measures = measuresList)
 
 mesaure.values <- resampleRansdomForestSRC[["measures.test"]]
 mesaure.values.cc.tree <- resample.cc.tree[["measures.test"]]
@@ -182,10 +182,10 @@ counts[7,4] = acc_ns_mean.svm
 
 counts
 
-barplot(counts, main="Miary jakosci",
-        xlab="Number of Gears", col=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"),
-        names.arg=c("Hamming Loss", "Subset", "F1","Accuracy"), beside=TRUE,
-        legend = c("random forest","chain wrapper tree","nested stacking wrapper tree","chain wrapper Naive Bayes","nested stacking wrapper Naive Bayes"
-                   ,"chain wrapper SVM","nested stacking wrapper SVM"))
+barplot(counts, main="Miary jakosci dla klasyfikacji zbioru 'Yeast'",
+        col=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"),
+        names.arg=c("Hamming Loss", "Subset", "F1","Accuracy"), beside=TRUE,legend=TRUE)
 
+legend("bottomright",legend=c("random forest","chain wrapper tree","nested stacking wrapper tree","chain wrapper Naive Bayes","nested stacking wrapper Naive Bayes"
+                              ,"chain wrapper SVM","nested stacking wrapper SVM"), fill=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"))
 

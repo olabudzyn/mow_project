@@ -91,7 +91,7 @@ performance(predict.cc.svm, measures = measuresList)
 performance(predict.ns.svm, measures = measuresList)
 
 # resampling
-rdesc = makeResampleDesc("CV", iters = 10, split = 2/3)
+rdesc = makeResampleDesc("CV", iters = 10)
 resampleRansdomForestSRC = resample(lrn.rfsrc, scene.task, rdesc, measures = measuresList)
 resample.cc.tree = resample(lrn.cc.tree, scene.task, rdesc, measures = measuresList)
 resample.ns.tree = resample(lrn.ns.tree, scene.task, rdesc, measures = measuresList)
@@ -183,10 +183,10 @@ counts[7,4] = acc_ns_mean.svm
 
 counts
 
-barplot(counts, main="Miary jakosci",
-        xlab="Number of Gears", col=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"),
-        names.arg=c("Hamming Loss", "Subset", "F1","Accuracy"), beside=TRUE,
-        legend = c("random forest","chain wrapper tree","nested stacking wrapper tree","chain wrapper Naive Bayes","nested stacking wrapper Naive Bayes"
-                   ,"chain wrapper SVM","nested stacking wrapper SVM"))
+barplot(counts, main="Miary jakosci dla klasyfikacji zbioru 'Scene'",
+        col=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"),
+        names.arg=c("Hamming Loss", "Subset", "F1","Accuracy"), beside=TRUE,legend=TRUE)
 
+legend("bottomright",legend=c("random forest","chain wrapper tree","nested stacking wrapper tree","chain wrapper Naive Bayes","nested stacking wrapper Naive Bayes"
+                              ,"chain wrapper SVM","nested stacking wrapper SVM"), fill=c("black","darkgray","lightgray", "darkgreen", "lightgreen","darkblue", "lightblue"))
 
