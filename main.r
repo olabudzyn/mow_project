@@ -1,59 +1,54 @@
-# install.packages("utiml")
-# install.packages("RWeka")
-# 
-# library("utiml")
-# library("rJava")
-# library("RWeka")
-# library(mldr)
+install.packages("utiml")
 
-library("mlr")
-library("BBmisc")
-library("mldr")
 library("ParamHelpers")
+library("mlr")
+library("utiml")
+#library("BBmisc")
+library("mldr")
+library(datarobot)
+source("multilabelChain.R")
 
-# myyeast <- read.arff("yeast")
-# myscene <- read.arff("scene")
-# 
-# yeast <- read.arff("yeast")
-# 
 yeast_train <- read.arff("yeast-train",use_xml=TRUE,auto_extension = TRUE, "yeast.xml")
 yeast_test <- read.arff("yeast-test",use_xml=TRUE,auto_extension = TRUE, "yeast.xml")
-# 
-# my_yeast_train <- yeast_train[["dataframe"]]
-# yeast_train_label <- my_yeast_train[yeast_train[["labelIndices"]]]
-# yeast_train_attr <- my_yeast_train[1:103]
-# 
-# my_yeast_test <- yeast_test[["dataframe"]]
-# yeast_test_label <- my_yeast_test[yeast_test[["labelIndices"]]]
-# yeast_test_attr <- my_yeast_test[1:103]
+
+scene_train <- read.arff("scene-train",use_xml=TRUE,auto_extension = TRUE, "scene.xml")
+scene_test <- read.arff("scene-test",use_xml=TRUE,auto_extension = TRUE, "scene.xml")
 
 set.seed(1729)
 
-# wczytanie danych prawidlowe
-#yeast <- read.arff("yeast")
+yeast.data.train = yeast_train[["dataframe"]]
+yeast.data.test = yeast_test[["dataframe"]]
 
-data.train = yeast_train[["dataframe"]]
-data.test = yeast_test[["dataframe"]]
+scene.data.train = scene_train[["dataframe"]]
+scene.data.test = scene_test[["dataframe"]]
 
-target = labels(yeast_train[["attributes"]])
-labels = target[yeast_train[["labelIndices"]]]
+########## YEAST
+yeast.target = labels(yeast_train[["attributes"]])
+yeast.labels = yeast.target[yeast_train[["labelIndices"]]]
 
-feats = setdiff(target, labels)
-new_data.train = data.train[feats]
-new_data.test = data.test[feats]
-logic_data <- lapply(data.train[labels], as.logical)
-logic_data.test <- lapply(data.test[labels], as.logical)
+yeast.feats = setdiff(yeast.target, yeast.labels)
+yeast.new_data.train = yeast.data.train[yeast.feats]
+yeast.new_data.test = yeast.data.test[yeast.feats]
+yeast.logic_data <- lapply(yeast.data.train[yeast.labels], as.logical)
+yeast.logic_data.test <- lapply(yeast.data.test[yeast.labels], as.logical)
 
-data_with_logic = cbind(new_data.train, logic_data)
-data_with_logic.test = cbind(new_data.test, logic_data.test)
+yeast.data_with_logic = cbind(yeast.new_data.train, yeast.logic_data)
+yeast.data_with_logic.test = cbind(yeast.new_data.test, yeast.logic_data.test)
 
-# stworzenie zadania
-yeast.task = makeMultilabelTask(id = "multi", data = data_with_logic.test, target = labels)
 
-# podzial danych na testowe i trenujace
-# n = getTaskSize(yeast.task)
-# train.set = seq(1, n, by = 2)
-# test.set = seq(2, n, by = 2)
+########## SCENE
+scene.target = labels(scene_train[["attributes"]])
+scene.labels = scene.target[scene_train[["labelIndices"]]]
+
+scene.feats = setdiff(scene.target, scene.labels)
+scene.new_data.train = scene.data.train[scene.feats]
+scene.new_data.test = scene.data.test[scene.feats]
+scene.logic_data <- lapply(scene.data.train[scene.labels], as.logical)
+scene.logic_data.test <- lapply(scene.data.test[scene.labels], as.logical)
+
+scene.data_with_logic = cbind(scene.new_data.train, scene.logic_data)
+scene.data_with_logic.test = cbind(scene.new_data.test, scene.logic_data.test)
+
 
 #stworzenie klasyfikatorów binarnych 
 
@@ -66,125 +61,71 @@ binary.naiveBayes = makeLearner("classif.naiveBayes")
 # Maszyna wektorów nosnych
 binary.svm = makeLearner("classif.svm")
 
-multilabelChain <- function(learner, data, binary.label.data, labels) {
-  
-  nr_labels = length(labels)
-  weightMatrix <- matrix(0, nr_labels, dim(data)[2])
-  
-  
-  for (i in 1 : nr_labels)
-  {
-    chain = cbind(data, binary.label.data[i])
-    binarytask = makeClassifTask(id = "BinaryClassification", data = chain, target = labels[i])
-    mod = train(learner, binarytask)
-    task.pred = predict(mod, task = binarytask)
-    response = getPredictionResponse(task.pred)
-    col_name <- sprintf("Class%d", i)
-    new_data = cbind(data, lapply(response, as.logical))
-    colnames(new_data)[dim(new_data)[2]] <- col_name
-    data <- new_data
-  }
-  
-  return(mod)
-}
+
+########################### PRZEWIDYWANIA DLA YEAST ##############################
+yeast.labels_data  <- do.call(cbind, yeast.data.test[yeast.labels])
 
 
-model = multilabelChain(binary.tree, new_data.train, logic_data, labels)
-task.pred = predict(model, task = yeast.task)
+##### results dla klasyfikatora naiveBayes
+yeast.model.naiveBayes = multilabelChain(binary.naiveBayes, yeast.new_data.train, yeast.logic_data)
+yeast.prediction.naiveBayes = predict.myChainClassier(yeast.model.naiveBayes, yeast.new_data.test, yeast.logic_data.test)
 
-perceptron <- function(x, y, eta, niter) {
-  
-  errors <- rep(0, niter)
-  weight <- t(runif(dim(x)[2], min = 0, max = 1))
-  
-  
-  for (jj in 1:niter) {
-    for (ii in 1:length(y)) {
-      
-      #sigmoidalna funkcja aktywacji
-      beta = 5
-      z <-  as.numeric(x[ii, ]) %*% t(weight)
-      
-      ypred = 1 / (1 + exp (-beta * z))
-      
-      
-      #poprawka wag
-      weightdiff <- eta * (y[ii] - ypred) *   as.numeric(x[ii,])
-      
-      weight <- weight + t(weightdiff)
-      
-      
-      if (abs(ypred > 0.5))
-        ypredbin = 1
-      else
-        ypredbin = 0
-      
-      #obliczanie ilosci bledow
-      if ((y[ii] - ypredbin) != 0.0) {
-        errors[jj] <- errors[jj] + 1
-      }
-      
-    }
-  }
-  
-  newList <- list(weight,errors)
-  print(newList[1])
-  return(newList)
-  
- # return(weight)
-}
+yeast.hammloss.naiveBayes  <- measureMultilabelHamloss(yeast.labels_data, yeast.prediction.naiveBayes)
+yeast.subset01.naiveBayes  <- measureMultilabelSubset01(yeast.labels_data, yeast.prediction.naiveBayes)
+yeast.f1.naiveBayes <- measureMultilabelF1(yeast.labels_data, yeast.prediction.naiveBayes)
+yeast.acc.naiveBayes <- measureMultilabelACC(yeast.labels_data, yeast.prediction.naiveBayes)
+
+##### results dla klasyfikatora tree
+yeast.model.tree = multilabelChain(binary.tree, yeast.new_data.train, yeast.logic_data)
+yeast.prediction.tree = predict.myChainClassier(yeast.model.tree, yeast.new_data.test, yeast.logic_data.test)
+
+yeast.hammloss.tree <- measureMultilabelHamloss(yeast.labels_data, yeast.prediction.tree)
+yeast.subset01.tree  <- measureMultilabelSubset01(yeast.labels_data, yeast.prediction.tree)
+yeast.f1.tree <- measureMultilabelF1(yeast.labels_data, yeast.prediction.tree)
+yeast.acc.tree  <- measureMultilabelACC(yeast.labels_data, yeast.prediction.tree)
 
 
+##### results dla klasyfikatora svm
+yeast.model.svm = multilabelChain(binary.svm, yeast.new_data.train, yeast.logic_data)
+yeast.prediction.svm = predict.myChainClassier(yeast.model.svm, yeast.new_data.test, yeast.logic_data.test)
+
+yeast.hammloss.svm  <- measureMultilabelHamloss(yeast.labels_data, yeast.prediction.svm)
+yeast.subset01.svm  <- measureMultilabelSubset01(yeast.labels_data, yeast.prediction.svm)
+yeast.f1.svm <- measureMultilabelF1(yeast.labels_data, yeast.prediction.svm)
+yeast.acc.svm  <- measureMultilabelACC(yeast.labels_data, yeast.prediction.svm)
 
 
-results <- function(weights, x) {
-  val <- rep(0, dim(x)[1])
-  
-  for (ii in 1:dim(x)[1]) {
-    beta = 5
-    z <-  as.numeric(x[ii, ]) %*% t(weights)
-    
-    ypred = 1 / (1 + exp (-beta * z))
-    
-    
-    
-    if (abs(ypred > 0.5))
-      val[ii] = 1
-    else
-      val[ii] = 0
-    
-  }
-  return(val)
-}
+########################### PRZEWIDYWANIA DLA SCENE ##############################
+scene.labels_data  <- do.call(cbind, scene.data.test[scene.labels])
+
+##### results dla klasyfikatora naiveBayes
+scene.model.naiveBayes = multilabelChain(binary.naiveBayes, scene.new_data.train, scene.logic_data)
+scene.prediction.naiveBayes = predict.myChainClassier(scene.model.naiveBayes, scene.new_data.test, scene.logic_data.test)
+
+scene.hammloss.naiveBayes <- measureMultilabelHamloss(scene.labels_data, scene.prediction.naiveBayes)
+scene.subset01.naiveBayes <- measureMultilabelSubset01(scene.labels_data, scene.prediction.naiveBayes)
+scene.f1.naiveBayes <- measureMultilabelF1(scene.labels_data, scene.prediction.naiveBayes)
+scene.acc.naiveBayes <- measureMultilabelACC(scene.labels_data, scene.prediction.naiveBayes)
 
 
-# 
-# chain <- generateChain(yeast_train_attr, yeast_train_label, 0.001, 5)
-# 
-# result <- results(chain[14, ], yeast_test_attr)
+##### results dla klasyfikatora tree
+scene.model.tree = multilabelChain(binary.tree, scene.new_data.train, scene.logic_data)
+scene.prediction.tree = predict.myChainClassier(scene.model.tree, scene.new_data.test, scene.logic_data.test)
+
+scene.hammloss.tree  <- measureMultilabelHamloss(scene.labels_data, scene.prediction.tree)
+scene.subset01.tree  <- measureMultilabelSubset01(scene.labels_data, scene.prediction.tree)
+scene.f1.tree <- measureMultilabelF1(scene.labels_data, scene.prediction.tree)
+scene.acc.tree  <- measureMultilabelACC(scene.labels_data, scene.prediction.tree)
 
 
+##### results dla klasyfikatora svm
+scene.model.svm = multilabelChain(binary.svm, scene.new_data.train, scene.logic_data)
+scene.prediction.svm = predict.myChainClassier(scene.model.svm, scene.new_data.test, scene.logic_data.test)
 
-# plot data - a picture is worth a 1000 words. Melt data => then ggplot
-# library(ggplot2)
-# ggplot(irissubdf, aes(x = sepal, y = petal)) +
-#   geom_point(aes(colour = species, shape = species), size = 3) +
-#   xlab("sepal length") +
-#   ylab("petal length") +
-#   ggtitle("Species vs sepal and petal lengths")
-# add binary labels corresponding to species - Initialize all values to 1
-# add setosa label of -1. The binary +1, -1 labels are in the fourth
-# column. It is better to create two separate data frames: one containing
-# the attributes while the other contains the class values.
-
-
-
-
-
-
-
-
-
+scene.hammloss.svm  <- measureMultilabelHamloss(scene.labels_data, scene.prediction.svm)
+scene.subset01.svm  <- measureMultilabelSubset01(scene.labels_data, scene.prediction.svm)
+scene.f1.svm <- measureMultilabelF1(scene.labels_data, scene.prediction.svm)
+scene.acc.svm  <- measureMultilabelACC(scene.labels_data, scene.prediction.svm)
 
 
 
