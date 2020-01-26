@@ -64,6 +64,15 @@ binary.svm = makeLearner("classif.svm")
 
 ########################### PRZEWIDYWANIA DLA YEAST ##############################
 yeast.labels_data  <- do.call(cbind, yeast.data.test[yeast.labels])
+yeast.logic_data <- lapply(yeast.data.train[yeast.labels], as.logical)
+yeast.logic_data.test <- lapply(yeast.data.test[yeast.labels], as.logical)
+
+s <- sample(1:14)
+
+yeast.labels_data <- yeast.labels_data[,s]
+yeast.logic_data <- yeast.logic_data[s]
+yeast.logic_data.test <- yeast.logic_data.test[s]
+
 
 
 ##### results dla klasyfikatora naiveBayes
@@ -97,6 +106,15 @@ yeast.acc.svm  <- measureMultilabelACC(yeast.labels_data, yeast.prediction.svm)
 
 ########################### PRZEWIDYWANIA DLA SCENE ##############################
 scene.labels_data  <- do.call(cbind, scene.data.test[scene.labels])
+scene.logic_data <- lapply(scene.data.train[scene.labels], as.logical)
+scene.logic_data.test <- lapply(scene.data.test[scene.labels], as.logical)
+
+sScene <- sample(1:6)
+
+scene.labels_data <- scene.labels_data[,sScene]
+scene.logic_data <- scene.logic_data[sScene]
+scene.logic_data.test <- scene.logic_data.test[sScene]
+
 
 ##### results dla klasyfikatora naiveBayes
 scene.model.naiveBayes = multilabelChain(binary.naiveBayes, scene.new_data.train, scene.logic_data)
